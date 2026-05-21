@@ -5,14 +5,18 @@ A player wins if there are exactly 5 stones of the same color in a row
 horizontally, vertically or diagonally.
 """
 
-from pathlib import Path
+import sys
 
 BOARD_SIZE = 19
 # enhancement: магічне число «5» (довжина виграшної лінії) винесене
 # в іменовану константу. Раніше воно зустрічалось у коді «як є»,
 # що ускладнювало читання та підтримку.
 WIN_LENGTH = 5
-INPUT_FILE = Path(__file__).parent / "sample_input.txt"
+# enhancement (#4): напрямки сканування винесені у модульну константу
+# поряд із BOARD_SIZE/WIN_LENGTH. Раніше цей список перестворювався
+# при кожному виклику find_winner; тепер це чиста константа, плюс
+# усі «магічні» параметри гри тепер згруповані в одному місці.
+DIRECTIONS = ((0, 1), (1, 0), (1, 1), (-1, 1))
 
 
 def read_board(lines):
@@ -41,15 +45,13 @@ def find_winner(board):
     («що означає row=0, col=0?»). Тепер сигнатура чесна: або є
     переможець з координатами, або None.
     """
-    directions = [(0, 1), (1, 0), (1, 1), (-1, 1)]
-
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             player = board[row][col]
             if player == 0:
                 continue
 
-            for d_row, d_col in directions:
+            for d_row, d_col in DIRECTIONS:
                 prev_row, prev_col = row - d_row, col - d_col
                 # bug fix: раніше було просто board[prev_row][prev_col],
                 # але при row == 0, d_row == 1 отримуємо prev_row == -1,
@@ -81,8 +83,19 @@ def find_winner(board):
 
 
 def main():
-    with open(INPUT_FILE) as f:
-        lines = iter(f.read().splitlines())
+    # bug fix (#1): раніше main() жорстко відкривав sample_input.txt
+    # поряд зі скриптом, ігноруючи stdin. Це суперечило README, яке
+    # обіцяло запуск через `python the_game.py < sample_input.txt`,
+    # і не давало прогнати програму на іншому вхідному файлі без
+    # правки коду. Тепер читаємо саме зі stdin, як і задокументовано.
+    #
+    # bug fix (#2): явно реконфігуруємо stdin на UTF-8. На Windows
+    # системна локаль за замовчуванням — cp1251, тож вхідний файл
+    # із UTF-8 BOM або нелатинськими символами міг прочитатись
+    # некоректно або з UnicodeDecodeError. reconfigure() безпечно
+    # доступний у Python 3.7+.
+    sys.stdin.reconfigure(encoding="utf-8")
+    lines = iter(sys.stdin.read().splitlines())
 
     num_tests = int(next(lines))
     for _ in range(num_tests):
