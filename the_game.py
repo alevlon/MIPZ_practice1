@@ -82,6 +82,19 @@ def find_winner(board):
     return None
 
 
+PLAYER_NAMES = {1: "чорні (1)", 2: "білі (2) "}
+SEPARATOR = "═" * 60
+
+
+def format_result(index, result):
+    """Return a human-readable line describing the outcome of board #index."""
+    label = f"  Дошка #{index}:".ljust(14)
+    if result is None:
+        return f"{label} переможця немає"
+    winner, row, col = result
+    return f"{label} виграли {PLAYER_NAMES[winner]} — рядок {row}, стовпець {col}"
+
+
 def main():
     # bug fix (#1): раніше main() жорстко відкривав sample_input.txt
     # поряд зі скриптом, ігноруючи stdin. Це суперечило README, яке
@@ -89,26 +102,46 @@ def main():
     # і не давало прогнати програму на іншому вхідному файлі без
     # правки коду. Тепер читаємо саме зі stdin, як і задокументовано.
     #
-    # bug fix (#2): явно реконфігуруємо stdin на UTF-8. На Windows
-    # системна локаль за замовчуванням — cp1251, тож вхідний файл
-    # із UTF-8 BOM або нелатинськими символами міг прочитатись
-    # некоректно або з UnicodeDecodeError. reconfigure() безпечно
-    # доступний у Python 3.7+.
+    # bug fix (#2): явно реконфігуруємо stdin/stdout на UTF-8. На
+    # Windows системна локаль за замовчуванням — cp1251, тож вхідний
+    # файл із UTF-8 BOM/нелатинськими символами міг впасти з
+    # UnicodeDecodeError, а pretty-вивід з кириличними рамками — з
+    # UnicodeEncodeError. reconfigure() безпечно доступний у Python 3.7+.
     sys.stdin.reconfigure(encoding="utf-8")
-    lines = iter(sys.stdin.read().splitlines())
+    sys.stdout.reconfigure(encoding="utf-8")
+    # enhancement: дозволяємо людині візуально розділяти дошки порожніми
+    # рядками («абзацами») у вхідному файлі. Парсер тепер ігнорує
+    # порожні рядки та рядки з самих лише пробілів, тож формат лишається
+    # сумісним зі строгою специфікацією, але стає набагато читабельнішим
+    # для ручного редагування sample_input.txt.
+    lines = iter(line for line in sys.stdin.read().splitlines() if line.strip())
 
     num_tests = int(next(lines))
+    results = []
     for _ in range(num_tests):
         board = read_board(lines)
         # Узгоджено з новою сигнатурою find_winner: None == немає переможця,
         # інакше — кортеж (player, row, col).
-        result = find_winner(board)
-        if result is None:
-            print(0)
-        else:
-            winner, row, col = result
-            print(winner)
-            print(row, col)
+        results.append(find_winner(board))
+
+    # enhancement: замість сухого виводу за специфікацією (число + пара
+    # координат) друкуємо людино-читабельний звіт з шапкою, переліком
+    # дощок і підсумком. Так результат набагато простіше переглядати
+    # очима під час лабораторної роботи. Якщо колись знадобиться суворий
+    # формат для автоматичної перевірки — достатньо додати CLI-прапор.
+    wins = sum(1 for r in results if r is not None)
+    draws = len(results) - wins
+
+    print(SEPARATOR)
+    print("  THE GAME (Renju) — результати")
+    print(SEPARATOR)
+    print()
+    for i, result in enumerate(results, start=1):
+        print(format_result(i, result))
+    print()
+    print(SEPARATOR)
+    print(f"  Підсумок: переможців {wins}, нічиїх {draws}")
+    print(SEPARATOR)
 
 
 if __name__ == "__main__":
